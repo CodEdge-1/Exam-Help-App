@@ -762,6 +762,11 @@ class InstallerApp(tk.Tk):
                       relief="flat", cursor="hand2", padx=16, pady=7,
                       command=self._save_api_key).pack(side="left")
 
+            tk.Button(btn_row, text="Skip →",
+                      font=("Helvetica", 11), fg=FG_MUTED, bg=BG,
+                      relief="flat", cursor="hand2", padx=12, pady=7,
+                      command=lambda: self._show_step(5)).pack(side="left", padx=(10, 0))
+
             self._api_status = tk.Label(btn_row, text="", fg=FG_MUTED, bg=BG,
                                          font=("Helvetica", 10))
             self._api_status.pack(side="left", padx=(12, 0))
