@@ -57,30 +57,16 @@ fi
 
 echo "Build machine: $($PYTHON_CMD --version)  (using: $PYTHON_CMD)"
 
-# ── Ensure pip is available (auto-bootstrap if missing) ───────────────────────
+# ── Create a virtual environment (avoids externally-managed-environment error) ─
 echo ""
-echo "[1/5] Checking pip..."
-"$PYTHON_CMD" -m pip --version &>/dev/null
-if [ $? -ne 0 ]; then
-    echo "      pip not found — bootstrapping via ensurepip..."
-    "$PYTHON_CMD" -m ensurepip --upgrade 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "      ensurepip failed, trying get-pip.py..."
-        curl -L -s -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
-        "$PYTHON_CMD" /tmp/get-pip.py
-    fi
-fi
+echo "[1/5] Setting up build environment..."
+VENV_DIR="$SCRIPT_DIR/.build_venv"
+"$PYTHON_CMD" -m venv "$VENV_DIR"
+source "$VENV_DIR/bin/activate"
+PYTHON_CMD="$VENV_DIR/bin/python"
+echo "      Virtual environment ready."
 
-"$PYTHON_CMD" -m pip --version &>/dev/null
-if [ $? -ne 0 ]; then
-    echo "ERROR: Could not install pip."
-    echo "Try reinstalling Python via: brew install python"
-    echo "Or download from: https://python.org/downloads"
-    exit 1
-fi
-echo "      pip ready."
-
-# ── Install PyInstaller ────────────────────────────────────────────────────────
+# ── Install PyInstaller inside the venv ───────────────────────────────────────
 echo ""
 echo "      Installing PyInstaller..."
 "$PYTHON_CMD" -m pip install pyinstaller --quiet --upgrade

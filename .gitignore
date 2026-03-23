@@ -13,6 +13,9 @@ packaged/windows/LAN_LLM_Proxy_Setup.exe
 packaged/mac/LAN_LLM_Proxy.dmg
 packaged/mac/*.app
 
+# Build virtual environment
+.build_venv/
+
 # Python cache
 __pycache__/
 *.pyc
