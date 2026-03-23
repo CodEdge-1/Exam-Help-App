@@ -171,6 +171,7 @@ class PromptCreate(BaseModel):
     icon: Optional[str] = "+"
     description: Optional[str] = ""
     prompt: str
+    attached_files: Optional[List[dict]] = []
 
 class ScheduleRequest(BaseModel):
     enabled: bool
@@ -321,19 +322,46 @@ class ScreenCaptureSystem:
         return image_bytes
 
     async def process_with_openai(self, image_bytes: bytes, prompt: str,
-                                   prompt_name: str = "") -> CaptureResult:
+                                   prompt_name: str = "",
+                                   attached_files: list = None) -> CaptureResult:
         retries, last_error = 0, None
         while retries <= config.MAX_RETRIES:
             try:
                 logger.info(f"Sending to OpenAI (attempt {retries+1})...")
                 b64 = base64.b64encode(image_bytes).decode('utf-8')
+
+                # Build content array — start with prompt text
+                content = [{"type": "text", "text": prompt}]
+
+                # Append attached files (images inline, text/pdf as text block)
+                for af in (attached_files or []):
+                    mime = af.get("mime_type", "")
+                    data = af.get("data", "")
+                    name = af.get("name", "file")
+                    if mime.startswith("image/"):
+                        content.append({"type": "image_url",
+                                        "image_url": {"url": f"data:{mime};base64,{data}"}})
+                    elif mime == "application/pdf":
+                        content.append({"type": "text",
+                                        "text": f"[Attached PDF — {name}]"})
+                        content.append({"type": "image_url",
+                                        "image_url": {"url": f"data:application/pdf;base64,{data}"}})
+                    else:
+                        # Plain text / csv / markdown — decode and embed
+                        try:
+                            text_content = base64.b64decode(data).decode("utf-8", errors="replace")
+                            content.append({"type": "text",
+                                            "text": f"[Attached file — {name}]:\n{text_content}"})
+                        except Exception:
+                            pass
+
+                # Always append the live screen capture last
+                content.append({"type": "image_url",
+                                 "image_url": {"url": f"data:image/png;base64,{b64}"}})
+
                 resp = self.client.chat.completions.create(
                     model=config.OPENAI_MODEL,
-                    messages=[{"role": "user", "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url",
-                         "image_url": {"url": f"data:image/png;base64,{b64}"}}
-                    ]}],
+                    messages=[{"role": "user", "content": content}],
                     max_tokens=config.MAX_TOKENS,
                     timeout=config.API_TIMEOUT
                 )
@@ -372,8 +400,9 @@ class ScreenCaptureSystem:
             prompt_text = custom_prompt or \
                           (p_obj['prompt'] if p_obj else DEFAULT_PROMPTS[0]['prompt'])
             prompt_name = p_obj['name'] if p_obj else "Custom"
+            attached_files = p_obj.get('attached_files', []) if p_obj else []
             image_bytes = self.capture_screen()
-            result = await self.process_with_openai(image_bytes, prompt_text, prompt_name)
+            result = await self.process_with_openai(image_bytes, prompt_text, prompt_name, attached_files)
             self.last_capture_time = datetime.now()
             return result
         except Exception as e:
@@ -517,6 +546,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .prompt-desc{font-size:11px;color:#8892b0;line-height:1.4}
 .prompt-delete{position:absolute;bottom:8px;right:10px;background:none;border:none;color:#4a5568;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:.15s}
 .prompt-delete:hover{color:#fc8181;background:#2d2d44}
+.prompt-files-badge{position:absolute;top:10px;left:10px;font-size:10px;background:#1e3a5f;color:#60a5fa;padding:2px 6px;border-radius:4px;font-weight:600}
+.file-drop-zone{border:2px dashed #2d2d44;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.15s;background:#0d0d1a;margin-top:6px}
+.file-drop-zone:hover,.file-drop-zone.dragover{border-color:#4f46e5;background:#1a1a2e}
+.file-drop-text{color:#8892b0;font-size:13px}
+.file-pick-btn{color:#a78bfa;cursor:pointer;text-decoration:underline;font-weight:600}
+.attached-file{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1a1a2e;border-radius:6px;margin-top:6px;font-size:12px;color:#cdd6f4}
+.attached-file-remove{margin-left:auto;background:none;border:none;color:#4a5568;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+.attached-file-remove:hover{color:#fc8181}
 
 /* Add prompt form */
 .form-card{background:#1a1a2e;border-radius:12px;border:1px solid #2d2d44;padding:20px;margin-bottom:20px}
@@ -710,6 +747,19 @@ input:checked+.slider:before{transform:translateX(20px);background:#fff}
         <label>Prompt Instructions</label>
         <textarea id="newPromptText" placeholder="Write your AI instructions here..."></textarea>
       </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label>Attach Files <span style="color:#8892b0;font-size:11px">(optional — images or documents sent with every capture using this prompt)</span></label>
+        <div class="file-drop-zone" id="fileDropZone"
+             ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+             onclick="document.getElementById('fileInput').click()">
+          <div class="file-drop-text">🖼️ Drop images or 📄 documents here, or <span class="file-pick-btn">browse</span></div>
+          <div style="color:#4a5568;font-size:11px;margin-top:4px">Supports: PNG, JPG, PDF, TXT, CSV</div>
+        </div>
+        <input type="file" id="fileInput" multiple
+               accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.csv,.md"
+               style="display:none" onchange="handleFileSelect(event)">
+        <div id="attachedFilesList"></div>
+      </div>
       <button class="btn btn-primary" onclick="addPrompt()">Save Prompt</button>
     </div>
   </div>
@@ -883,6 +933,8 @@ function renderPrompts() {
   const grid = document.getElementById('promptsGrid');
   grid.innerHTML = allPrompts.map(p => `
     <div class="prompt-card${p.id===activePromptId?' active':''}" onclick="setPrompt('${p.id}',this)">
+      ${p.attached_files && p.attached_files.length ?
+        `<div class="prompt-files-badge">📎 ${p.attached_files.length} file${p.attached_files.length>1?'s':''}</div>` : ''}
       <div class="prompt-icon">${p.icon||'?'}</div>
       <div class="prompt-name">${p.name}</div>
       <div class="prompt-desc">${p.description||''}</div>
@@ -900,6 +952,46 @@ async function setPrompt(id, card) {
   const p = allPrompts.find(x=>x.id===id);
   if(p) document.getElementById('sidebarPrompt').textContent = p.name;
 }
+// ---- File attachment helpers ----
+let attachedFiles = [];
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('fileDropZone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('fileDropZone').classList.remove('dragover');
+}
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('fileDropZone').classList.remove('dragover');
+  processFiles(e.dataTransfer.files);
+}
+function handleFileSelect(e) {
+  processFiles(e.target.files);
+  e.target.value = '';
+}
+function processFiles(files) {
+  for(const file of files) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const data = ev.target.result.split(',')[1];
+      attachedFiles.push({name: file.name, mime_type: file.type, data});
+      renderAttachedFiles();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function renderAttachedFiles() {
+  const list = document.getElementById('attachedFilesList');
+  list.innerHTML = attachedFiles.map((f,i) => `
+    <div class="attached-file">
+      <span>${f.mime_type.startsWith('image/')?'🖼️':f.mime_type==='application/pdf'?'📄':'📝'}</span>
+      <span>${f.name}</span>
+      <button class="attached-file-remove" onclick="removeFile(${i})">✕</button>
+    </div>`).join('');
+}
+function removeFile(i) { attachedFiles.splice(i,1); renderAttachedFiles(); }
+
 async function addPrompt() {
   const name  = document.getElementById('newPromptName').value.trim();
   const icon  = document.getElementById('newPromptIcon').value.trim() || '+';
@@ -908,11 +1000,13 @@ async function addPrompt() {
   if(!name||!prompt){alert('Please fill in Name and Prompt fields');return;}
   await fetch('/prompts',{method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name,icon,description:desc,prompt})});
+    body:JSON.stringify({name,icon,description:desc,prompt,attached_files:attachedFiles})});
   document.getElementById('newPromptName').value='';
   document.getElementById('newPromptIcon').value='';
   document.getElementById('newPromptDesc').value='';
   document.getElementById('newPromptText').value='';
+  attachedFiles = [];
+  renderAttachedFiles();
   await loadPrompts();
 }
 async function deletePrompt(id) {
