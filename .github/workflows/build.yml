@@ -1,0 +1,97 @@
+name: Build Installers
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Triggers:
+#   • Push a tag like  v1.0  → builds both platforms + creates a GitHub Release
+#   • "Run workflow" button on GitHub → builds both (no release created)
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  JOB 1 — Build Windows .exe
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Windows installer
+        working-directory: installer_windows
+        shell: cmd
+        run: build_windows.bat
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: packaged/windows/LAN_LLM_Proxy_Setup.exe
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  JOB 2 — Build Mac .dmg
+# ─────────────────────────────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build macOS installer
+        working-directory: installer_mac
+        run: |
+          chmod +x build_mac.sh
+          ./build_mac.sh
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-installer
+          path: packaged/mac/LAN_LLM_Proxy.dmg
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  JOB 3 — Create GitHub Release with both files (only on tag push)
+# ─────────────────────────────────────────────────────────────────────────────
+  create-release:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: ./windows
+
+      - name: Download macOS installer
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-installer
+          path: ./mac
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LAN LLM Proxy ${{ github.ref_name }}"
+          body: |
+            ## LAN LLM Proxy — ${{ github.ref_name }}
+
+            Download the file for your computer below:
+
+            | Computer | File to download |
+            |---|---|
+            | **Windows** | `LAN_LLM_Proxy_Setup.exe` |
+            | **Mac** | `LAN_LLM_Proxy.dmg` |
+
+            ### How to install
+            **Windows:** Double-click `LAN_LLM_Proxy_Setup.exe` and follow the steps.
+            **Mac:** Double-click `LAN_LLM_Proxy.dmg`, then right-click the app → Open → Open.
+          files: |
+            windows/LAN_LLM_Proxy_Setup.exe
+            mac/LAN_LLM_Proxy.dmg

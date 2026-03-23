@@ -1,0 +1,44 @@
+[
+  {
+    "id": "qa",
+    "name": "Answer Question",
+    "icon": "?",
+    "description": "Finds and answers any question on screen",
+    "prompt": "You are a smart assistant. Look at this screen and:\n1. If there is a QUESTION on screen, answer it directly and clearly.\n2. If there is a TASK or INSTRUCTION, complete it directly.\n3. If there is TEXT to analyze, analyze it directly.\n4. If no clear question, summarize the main content.\nIMPORTANT: Plain conversational text only. No headers like ###, no labels like Model: or Tokens:. No mention of the screen, app, file name, taskbar, or UI. Just answer naturally."
+  },
+  {
+    "id": "summarize",
+    "name": "Summarize",
+    "icon": "S",
+    "description": "Summarizes all text on screen into key points",
+    "prompt": "Summarize the main content visible on this screen into clear, concise bullet points. Focus only on the actual content — ignore the taskbar, clock, system tray, or any UI chrome. Do not mention the application or file name. Plain text only, no markdown headers."
+  },
+  {
+    "id": "translate",
+    "name": "Translate to English",
+    "icon": "T",
+    "description": "Translates any foreign text on screen to English",
+    "prompt": "Translate all non-English text visible on this screen to English. If the text is already in English, just return it as-is. Only return the translated text — no explanations, no descriptions of the screen."
+  },
+  {
+    "id": "explain",
+    "name": "Explain Simply",
+    "icon": "E",
+    "description": "Explains complex content in simple terms",
+    "prompt": "Look at the content on this screen and explain it in very simple, easy-to-understand language as if explaining to someone with no background knowledge. Focus only on the content, not the application or interface. Keep it conversational and clear."
+  },
+  {
+    "id": "extract",
+    "name": "Extract Data",
+    "icon": "D",
+    "description": "Extracts key data, numbers, and facts",
+    "prompt": "Extract all important data, numbers, facts, names, and dates visible on this screen. Present them in a clean, organized list. Ignore UI elements like taskbar, title bar, and system tray. Focus only on the actual content data."
+  },
+  {
+    "id": "proofread",
+    "name": "Proofread",
+    "icon": "P",
+    "description": "Checks text for grammar and spelling errors",
+    "prompt": "Proofread the text visible on this screen. List any grammar, spelling, or punctuation errors you find, and provide the corrected version. If the text is correct, say so. Focus only on the document content, not the application UI."
+  }
+]

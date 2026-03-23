@@ -1,0 +1,8 @@
+# Keep shell scripts with Unix line endings (required for Mac/Linux)
+*.sh    text eol=lf
+*.bat   text eol=crlf
+*.py    text eol=lf
+*.txt   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf

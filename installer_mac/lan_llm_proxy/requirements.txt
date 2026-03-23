@@ -1,0 +1,27 @@
+# LAN LLM Proxy System - Requirements
+# Compatible with Python 3.9 - 3.14
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# WebSocket
+websockets>=12.0
+
+# Data Models
+pydantic>=2.5.3
+
+# Screen Capture (latest build - compatible with Python 3.14)
+Pillow>=10.3.0
+
+# Hotkey Detection
+keyboard>=0.13.5
+
+# OpenAI
+openai>=1.10.0
+
+# Utilities
+python-multipart>=0.0.6
+
+# Optional: Colored console output
+colorama>=0.4.6

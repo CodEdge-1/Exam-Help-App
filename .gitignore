@@ -1,0 +1,26 @@
+# Build output
+build/
+dist/
+*.spec
+
+# Downloaded runtimes (large files — re-downloaded at build time)
+python_embed.zip
+python_mac.tar.gz
+get-pip.py
+
+# Packaged output (produced by build scripts)
+packaged/windows/LAN_LLM_Proxy_Setup.exe
+packaged/mac/LAN_LLM_Proxy.dmg
+packaged/mac/*.app
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+data/logs/
+
+# macOS junk
+.DS_Store
